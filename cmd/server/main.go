@@ -40,7 +40,7 @@ func main() {
 	defer sqlDB.Close()
 
 	server := apihandler.NewServer("8080", discordClient, db)
-	server.Start()
+	go server.Start()
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
