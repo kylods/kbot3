@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/kylods/kbot-backend/internal/discordclient"
+	"github.com/kylods/kbot-backend/internal/middleware"
 
 	"gorm.io/gorm"
 )
@@ -27,7 +28,7 @@ func NewServer(port string, discordClient *discordclient.Client, db *gorm.DB) *S
 
 	server := http.Server{
 		Addr:         ":" + port,
-		Handler:      mux,
+		Handler:      middleware.Logging(mux),
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  60 * time.Second,
