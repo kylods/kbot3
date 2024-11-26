@@ -1,11 +1,15 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/joho/godotenv"
+	"github.com/kylods/kbot-backend/internal/apihandler"
 	"github.com/kylods/kbot-backend/internal/database"
 	"github.com/kylods/kbot-backend/internal/discordclient"
 )
@@ -35,12 +39,25 @@ func main() {
 	}
 	defer sqlDB.Close()
 
-	interruptCh := make(chan os.Signal, 1)
-	signal.Notify(interruptCh, os.Interrupt)
+	server := apihandler.NewServer("8080", discordClient, db)
+	server.Start()
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
 	select {
-	case <-interruptCh:
+	case <-stop:
 		log.Println("Received interrupt signal, closing...")
+
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := server.Shutdown(ctx); err != nil {
+			log.Printf("Error during shutdown: %v", err)
+		}
+
+		discordClient.Close()
+
+		log.Println("Server shutdown complete")
 		os.Exit(0)
 	}
 
