@@ -25,6 +25,7 @@ func NewServer(port string, discordClient *discordclient.Client, db *gorm.DB) *S
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /ping", pingHandler)
+	mux.HandleFunc("GET /auth", authenticateHandler)
 
 	server := http.Server{
 		Addr:         ":" + port,
@@ -64,4 +65,8 @@ func respondJSON(w http.ResponseWriter, statusCode int, data interface{}) {
 	if err := json.NewEncoder(w).Encode(data); err != nil {
 		log.Printf("Failed to write JSON response: %v", err)
 	}
+}
+
+func authenticateHandler(w http.ResponseWriter, r *http.Request) {
+	respondJSON(w, http.StatusOK, "To Be Implemented")
 }

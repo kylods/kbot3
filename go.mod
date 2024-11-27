@@ -5,6 +5,7 @@ go 1.23.3
 require (
 	github.com/bwmarrin/dgvoice v0.0.0-20210225172318-caaac756e02e // indirect
 	github.com/bwmarrin/discordgo v0.28.1 // indirect
+	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
