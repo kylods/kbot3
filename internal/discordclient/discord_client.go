@@ -21,7 +21,7 @@ func NewDiscordClient(token string) *Client {
 
 func (c *Client) Run() {
 	// Add event handlers
-	c.session.AddHandler(messageCreate)
+	c.session.AddHandler(c.messageCreate)
 
 	// Open a connection to Discord
 	err := c.session.Open()
@@ -39,7 +39,7 @@ func (c *Client) SendChannelMessage(channelId string, message string) {
 	c.session.ChannelMessageSend(channelId, message)
 }
 
-func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
+func (c *Client) messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	if m.Author.Bot {
 		return
 	}
