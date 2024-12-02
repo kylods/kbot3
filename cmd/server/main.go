@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
-	"github.com/kylods/kbot-backend/internal/apihandler"
-	"github.com/kylods/kbot-backend/internal/database"
-	"github.com/kylods/kbot-backend/internal/discordclient"
+	"github.com/kylods/kbot/internal/apihandler"
+	"github.com/kylods/kbot/internal/database"
+	"github.com/kylods/kbot/internal/discordclient"
 )
 
 const version string = "INDEV"
