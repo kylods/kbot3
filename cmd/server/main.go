@@ -24,11 +24,11 @@ func main() {
 
 	log.Printf("Starting KBot Server %s\n", version)
 
-	// Initialize Discord client
+	// Discord client
 	discordClient := discordclient.NewDiscordClient(os.Getenv("DISCORD_BOT_TOKEN"))
 	go discordClient.Run() // Run Discord client in a separate goroutine
 
-	// Initialize database
+	// Database
 	db, err := database.Connect(os.Getenv("DB_CONNECTION_STRING"))
 	if err != nil {
 		log.Fatalf("Database connection failed: %v", err)
@@ -39,12 +39,15 @@ func main() {
 	}
 	defer sqlDB.Close()
 
+	// HTTP Server
 	server := apihandler.NewServer("8080", discordClient, db)
 	go server.Start()
 
+	// Receive interrupt signals to gracefully shutdown server
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
+	// Planning to put other cases here eventually.
 	select {
 	case <-stop:
 		log.Println("Received interrupt signal, closing...")

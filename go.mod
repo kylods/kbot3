@@ -1,4 +1,4 @@
-module github.com/kylods/kbot-backend
+module github.com/kylods/kbot
 
 go 1.23.3
 
