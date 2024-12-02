@@ -30,7 +30,10 @@ type AudioFile struct {
 
 type Guild struct {
 	gorm.Model
-	Name        string
-	DjRoles     string
-	LoopEnabled bool
+	GuildID        string
+	Name           string
+	CommandPrefix  rune
+	CommandChannel string
+	DjRoles        string
+	LoopEnabled    bool
 }

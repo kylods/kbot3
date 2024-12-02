@@ -20,7 +20,7 @@ func Connect(connectionString string) (*gorm.DB, error) {
 		return nil, err
 	}
 
-	db.Create(&models.Guild{Name: "Midtest Devout", DjRoles: "", LoopEnabled: false})
+	db.Create(&models.Guild{Name: "Midtest Devout", CommandPrefix: '!', DjRoles: "", LoopEnabled: false})
 
 	return db, nil
 }

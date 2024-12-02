@@ -24,10 +24,6 @@ func main() {
 
 	log.Printf("Starting KBot Server %s\n", version)
 
-	// Discord client
-	discordClient := discordclient.NewDiscordClient(os.Getenv("DISCORD_BOT_TOKEN"))
-	go discordClient.Run() // Run Discord client in a separate goroutine
-
 	// Database
 	db, err := database.Connect(os.Getenv("DB_CONNECTION_STRING"))
 	if err != nil {
@@ -38,6 +34,10 @@ func main() {
 		log.Fatalf("Failed to get SQL DB conneection: %v", err)
 	}
 	defer sqlDB.Close()
+
+	// Discord client
+	discordClient := discordclient.NewDiscordClient(os.Getenv("DISCORD_BOT_TOKEN"), version, db)
+	go discordClient.Run() // Run Discord client in a separate goroutine
 
 	// HTTP Server
 	server := apihandler.NewServer("8080", discordClient, db)
