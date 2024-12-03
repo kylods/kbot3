@@ -1,15 +1,18 @@
 package discordclient
 
 import (
+	"io"
 	"log"
 	"math/rand/v2"
+	"os"
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/jogramming/dca"
 	"github.com/kylods/kbot3/pkg/models"
+	"github.com/matthew-balzan/dca"
 	"gorm.io/gorm"
 )
 
@@ -39,6 +42,26 @@ var commands = []Command{
 		Name:        "about",
 		Description: "Provides some information about KBot",
 		Handler:     commandAboutHandler,
+	},
+	{
+		Name:        "summon",
+		Description: "Summon KBot **|** 1 Soul Shard **|** 10 Second Cast\n*Summons a voice instance of KBot under the command of the warlock & their allies, able to play some groovy tunes.*",
+		Handler:     commandSummonHandler,
+	},
+	{
+		Name:        "debug1",
+		Description: "Debug",
+		Handler:     commandDebug1Handler,
+	},
+	{
+		Name:        "debug2",
+		Description: "Debug",
+		Handler:     commandDebug2Handler,
+	},
+	{
+		Name:        "debug3",
+		Description: "Debug",
+		Handler:     commandDebug3Handler,
 	},
 }
 
@@ -87,7 +110,8 @@ func (c *Client) Close() {
 func (c *Client) createGuildHandler(s *discordgo.Session, g *discordgo.GuildCreate) {
 	/*This event can be sent in three different scenarios:
 
-	    When a user is initially connecting, to lazily load and backfill information for all unavailable guilds sent in the Ready event. Guilds that are unavailable due to an outage will send a Guild Delete event.
+	    When a user is initially connecting, to lazily load and backfill information for all unavailable guilds
+		sent in the Ready event. Guilds that are unavailable due to an outage will send a Guild Delete event.
 	    When a Guild becomes available again to the client.
 	    When the current user joins a new Guild.
 
@@ -210,5 +234,77 @@ func commandSetprefixHandler(s *discordgo.Session, m *discordgo.MessageCreate, c
 }
 
 func commandDownloadHandler(s *discordgo.Session, m *discordgo.MessageCreate, c *Client, gConfig *models.Guild) {
+	s.ChannelMessageSend(m.ChannelID, "need to build this still :)")
+}
+
+func commandSummonHandler(s *discordgo.Session, m *discordgo.MessageCreate, c *Client, gConfig *models.Guild) {
+	invokersVoiceChannel, err := s.State.VoiceState(m.GuildID, m.Author.ID)
+	if err != nil {
+		s.ChannelMessageSend(m.ChannelID, "Couldn't find your voice channel: "+err.Error())
+		return
+	}
+	if invokersVoiceChannel.ChannelID == "" {
+		s.ChannelMessageSend(m.ChannelID, "Couldn't find your voice channel...")
+		return
+	}
+	s.ChannelVoiceJoin(m.GuildID, invokersVoiceChannel.ChannelID, false, true)
+}
+
+func commandDebug1Handler(s *discordgo.Session, m *discordgo.MessageCreate, c *Client, gConfig *models.Guild) {
+	encodeSession, err := dca.EncodeFile("./07 - Imaginary.flac", dca.StdEncodeOptions)
+	if err != nil {
+		s.ChannelMessageSend(m.ChannelID, "Couldn't convert file: "+err.Error())
+		return
+	}
+	// Cleans up any file residue
+	defer encodeSession.Cleanup()
+
+	output, err := os.Create("output.dca")
+	if err != nil {
+		s.ChannelMessageSend(m.ChannelID, "Couldn't convert file: "+err.Error())
+		return
+	}
+
+	_, err = io.Copy(output, encodeSession)
+	if err != nil {
+		s.ChannelMessageSend(m.ChannelID, "Couldn't convert file: "+err.Error())
+		return
+	}
+}
+
+func commandDebug2Handler(s *discordgo.Session, m *discordgo.MessageCreate, c *Client, gConfig *models.Guild) {
+	// First check for voice connection
+	vc := s.VoiceConnections[m.GuildID]
+	if vc == nil {
+		s.ChannelMessageSend(m.ChannelID, "Couldn't retrieve voice connection. Is the bot in a voice channel??")
+		return
+	}
+
+	dcaFile, err := os.Open("./output.dca")
+	if err != nil {
+		s.ChannelMessageSend(m.ChannelID, "Couldn't open file: "+err.Error())
+		return
+	}
+	decoder := dca.NewDecoder(dcaFile)
+
+	for {
+		frame, err := decoder.OpusFrame()
+		if err != nil {
+			if err != io.EOF {
+				s.ChannelMessageSend(m.ChannelID, "Decoder error: "+err.Error())
+			}
+			break
+		}
+
+		select {
+		case vc.OpusSend <- frame:
+		case <-time.After(time.Second):
+			// No frame sent in a second, assume stream is kaput.
+			return
+		}
+	}
+}
+
+func commandDebug3Handler(s *discordgo.Session, m *discordgo.MessageCreate, c *Client, gConfig *models.Guild) {
 	s.ChannelMessageSend(m.ChannelID, "need to build this still :)")
 }

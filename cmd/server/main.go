@@ -47,21 +47,19 @@ func main() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
-	// Planning to put other cases here eventually.
-	select {
-	case <-stop:
-		log.Println("Received interrupt signal, closing...")
+	// Wait for shutdown signal
+	<-stop
+	log.Println("Received interrupt signal, closing...")
 
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		if err := server.Shutdown(ctx); err != nil {
-			log.Printf("Error during shutdown: %v", err)
-		}
-
-		discordClient.Close()
-
-		log.Println("Server shutdown complete")
-		os.Exit(0)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := server.Shutdown(ctx); err != nil {
+		log.Printf("Error during shutdown: %v", err)
 	}
+
+	discordClient.Close()
+
+	log.Println("Server shutdown complete")
+	os.Exit(0)
 
 }
