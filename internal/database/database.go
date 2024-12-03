@@ -3,7 +3,7 @@ package database
 import (
 	"log"
 
-	"github.com/kylods/kbot/pkg/models"
+	"github.com/kylods/kbot3/pkg/models"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )

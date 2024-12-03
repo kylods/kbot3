@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/kylods/kbot/internal/discordclient"
-	"github.com/kylods/kbot/internal/middleware"
+	"github.com/kylods/kbot3/internal/discordclient"
+	"github.com/kylods/kbot3/internal/middleware"
 
 	"gorm.io/gorm"
 )
