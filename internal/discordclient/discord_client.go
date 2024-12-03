@@ -100,10 +100,10 @@ func (c *Client) Run() {
 		log.Fatalf("Failed to open Discord session: %v", err)
 	}
 	log.Println("Discord client is running")
-
 }
 
 func (c *Client) Close() {
+	log.Println("Closing Discord client...")
 	c.session.Close()
 }
 
@@ -234,7 +234,7 @@ func commandSetprefixHandler(s *discordgo.Session, m *discordgo.MessageCreate, c
 }
 
 func commandDownloadHandler(s *discordgo.Session, m *discordgo.MessageCreate, c *Client, gConfig *models.Guild) {
-	s.ChannelMessageSend(m.ChannelID, "need to build this still :)")
+	s.ChannelMessageSend(m.ChannelID, "You can find a download to KBot Media Player at <https://nextcloud.kuelos.net/s/PdGpdc5Apd2DcGL>")
 }
 
 func commandSummonHandler(s *discordgo.Session, m *discordgo.MessageCreate, c *Client, gConfig *models.Guild) {
@@ -280,6 +280,7 @@ func commandDebug2Handler(s *discordgo.Session, m *discordgo.MessageCreate, c *C
 		return
 	}
 
+	// Open DCA Stream
 	dcaFile, err := os.Open("./output.dca")
 	if err != nil {
 		s.ChannelMessageSend(m.ChannelID, "Couldn't open file: "+err.Error())
@@ -287,6 +288,7 @@ func commandDebug2Handler(s *discordgo.Session, m *discordgo.MessageCreate, c *C
 	}
 	decoder := dca.NewDecoder(dcaFile)
 
+	// Push OPUS audio frames to Discord
 	for {
 		frame, err := decoder.OpusFrame()
 		if err != nil {
@@ -298,8 +300,7 @@ func commandDebug2Handler(s *discordgo.Session, m *discordgo.MessageCreate, c *C
 
 		select {
 		case vc.OpusSend <- frame:
-		case <-time.After(time.Second):
-			// No frame sent in a second, assume stream is kaput.
+		case <-time.After(time.Second): // No frame sent in a second, assume stream is kaput.
 			return
 		}
 	}
