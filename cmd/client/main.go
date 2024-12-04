@@ -15,15 +15,13 @@ import (
 
 const version string = "INDEV"
 
-func main() {
-	a := app.New()
-	w := a.NewWindow("KBot Media Player " + version)
-
+func mediaBarConstructor() *fyne.Container {
 	// Initialize bottomMediaInfoContainer
 	mediaProgressBar := widget.NewSlider(0, 1)
 	mediaProgressBar.SetValue(0)
 	mediaProgressBar.Disable()
-	mediaProgressBar.Resize(fyne.Size{Width: 100, Height: 20})
+
+	// placeholder values
 	mediaLengthSeconds := 90
 	mediaNowSeconds := 0
 
@@ -55,13 +53,17 @@ func main() {
 
 	bottomMediaInfoContainer := container.NewVBox(container.NewBorder(nil, nil, mediaDurationLabel, mediaName), mediaProgressBar)
 
+	return bottomMediaInfoContainer
+}
+
+func headerBarConstructor(w fyne.Window) *fyne.Container {
 	// initialize topbar
 	serverSelectionDropdown := widget.NewSelect([]string{"Midnight Cookout", "KBot Testing Grounds", "The Groovers"}, func(s string) {
 		prop := canvas.NewRectangle(color.Transparent)
 		prop.SetMinSize(fyne.NewSize(50, 50))
 
 		a3 := widget.NewActivity()
-		d := dialog.NewCustomWithoutButtons("Please wait...", container.NewStack(prop, a3), w)
+		d := dialog.NewCustomWithoutButtons("Requesting Server Data...", container.NewStack(prop, a3), w)
 		a3.Start()
 		d.Show()
 
@@ -70,18 +72,57 @@ func main() {
 			a3.Stop()
 			d.Hide()
 		}()
+
 	})
 
-	topMainContainer := container.NewBorder(nil, nil, nil, serverSelectionDropdown)
+	fileDialog := dialog.NewFileOpen(func(reader fyne.URIReadCloser, err error) {
+		if err != nil {
+			fmt.Print(err.Error())
+			return
+		}
+		if reader == nil {
+			return
+		}
+	}, w)
+
+	uploadFileButton := widget.NewButton("Upload File", func() {
+		fileDialog.Resize(fyne.NewSize(w.Content().Size().Width*.8, w.Content().Size().Height*.8))
+		fileDialog.Show()
+	})
+
+	topMainContainer := container.NewBorder(nil, nil, uploadFileButton, serverSelectionDropdown)
+
+	return topMainContainer
+}
+
+func queueBarConstructor() *fyne.Container {
+
+	playerControlsBar := widget.NewToolbar()
+
+	queueBar := container.NewBorder(nil, nil, nil, nil)
+}
+
+func contentConstructor(w fyne.Window) *fyne.Container {
+	mediaBar := mediaBarConstructor()
+	headerBar := headerBarConstructor(w)
 
 	content := container.NewBorder(
-		topMainContainer,
-		bottomMediaInfoContainer,
+		headerBar,
+		mediaBar,
 		nil,
 		nil,
 	)
 
+	return content
+}
+
+func main() {
+	a := app.New()
+	w := a.NewWindow("KBot Media Player " + version)
+
+	content := contentConstructor(w)
+
 	w.SetContent(content)
-	w.Resize(fyne.Size{Width: 800, Height: 600})
+	w.Resize(fyne.Size{Width: 1024, Height: 768})
 	w.ShowAndRun()
 }
