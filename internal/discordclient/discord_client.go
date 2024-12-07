@@ -251,7 +251,7 @@ func commandSummonHandler(s *discordgo.Session, m *discordgo.MessageCreate, c *C
 }
 
 func commandDebug1Handler(s *discordgo.Session, m *discordgo.MessageCreate, c *Client, gConfig *models.Guild) {
-	encodeSession, err := dca.EncodeFile("./07 - Imaginary.flac", dca.StdEncodeOptions)
+	encodeSession, err := dca.EncodeFile("./yule.mp3", dca.StdEncodeOptions)
 	if err != nil {
 		s.ChannelMessageSend(m.ChannelID, "Couldn't convert file: "+err.Error())
 		return
