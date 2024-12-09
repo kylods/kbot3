@@ -1,8 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"image/color"
+	"io"
+	"mime/multipart"
+	"net/http"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -15,6 +19,8 @@ import (
 )
 
 const version string = "INDEV"
+
+var serverURL string = "http://localhost:8080"
 
 type queueEntryWidget struct {
 	widget.Label
@@ -103,6 +109,56 @@ func mediaBarConstructor() *fyne.Container {
 	return bottomMediaInfoContainer
 }
 
+func uploadFileLogic(reader fyne.URIReadCloser) error {
+	defer reader.Close()
+
+	var requestBody bytes.Buffer
+	writer := multipart.NewWriter(&requestBody)
+
+	// Create form file field
+	formFile, err := writer.CreateFormFile("audioFile", reader.URI().Name())
+	if err != nil {
+		return fmt.Errorf("error creating form file: %w", err)
+	}
+
+	// Copy filedata to form field
+	_, err = io.Copy(formFile, reader)
+	if err != nil {
+		return fmt.Errorf("error copying file data: %w", err)
+	}
+
+	// Close writer & finalize multipart form
+	err = writer.Close()
+	if err != nil {
+		return fmt.Errorf("error closing multipart writer: %w", err)
+	}
+
+	// Send request to API
+	apiURL := serverURL + "/upload"
+	req, err := http.NewRequest(http.MethodPost, apiURL, &requestBody)
+	if err != nil {
+		return fmt.Errorf("error creating HTTP request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	// Execute the request
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("error sending HTTP request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// Handle the response
+	if resp.StatusCode != http.StatusAccepted {
+		respBody, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("upload failed: %s", string(respBody))
+	}
+
+	return nil
+}
+
 func headerBarConstructor(w fyne.Window) *fyne.Container {
 	// initialize topbar
 	serverSelectionDropdown := widget.NewSelect([]string{"Midnight Cookout", "KBot Testing Grounds", "The Groovers"}, func(s string) {
@@ -130,6 +186,9 @@ func headerBarConstructor(w fyne.Window) *fyne.Container {
 		if reader == nil {
 			return
 		}
+
+		uploadFileLogic(reader)
+
 	}, w)
 
 	uploadFileButton := widget.NewButton("Upload File", func() {
@@ -138,7 +197,7 @@ func headerBarConstructor(w fyne.Window) *fyne.Container {
 	})
 
 	connectEntry := widget.NewEntry()
-	connectEntry.Text = "localhost:8080"
+	connectEntry.Text = serverURL
 
 	connectDialog := dialog.NewForm(
 		"Connect to KBot",
@@ -146,10 +205,11 @@ func headerBarConstructor(w fyne.Window) *fyne.Container {
 		"Cancel",
 		[]*widget.FormItem{{Text: "IP Address:Port", Widget: connectEntry}},
 		func(b bool) {
-			if b {
-				fmt.Println("True")
-			} else {
-				fmt.Println("False")
+			if b { // Runs when pressing 'Connect'
+				serverURL = connectEntry.Text
+				fmt.Println(serverURL)
+			} else { // Runs when dismissed
+				return
 			}
 		},
 		w)
