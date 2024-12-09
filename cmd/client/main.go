@@ -137,7 +137,31 @@ func headerBarConstructor(w fyne.Window) *fyne.Container {
 		fileDialog.Show()
 	})
 
-	topMainContainer := container.NewBorder(nil, nil, uploadFileButton, serverSelectionDropdown)
+	connectEntry := widget.NewEntry()
+	connectEntry.Text = "localhost:8080"
+
+	connectDialog := dialog.NewForm(
+		"Connect to KBot",
+		"Connect",
+		"Cancel",
+		[]*widget.FormItem{{Text: "IP Address:Port", Widget: connectEntry}},
+		func(b bool) {
+			if b {
+				fmt.Println("True")
+			} else {
+				fmt.Println("False")
+			}
+		},
+		w)
+
+	connectButton := widget.NewButton("Connect to Server", func() {
+		connectDialog.Resize(fyne.NewSize(430, 100))
+		connectDialog.Show()
+	})
+
+	buttonsBox := container.NewHBox(uploadFileButton, connectButton)
+
+	topMainContainer := container.NewBorder(nil, nil, buttonsBox, serverSelectionDropdown)
 
 	return topMainContainer
 }
