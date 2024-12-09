@@ -11,9 +11,56 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
+	"github.com/google/uuid"
 )
 
 const version string = "INDEV"
+
+type queueEntryWidget struct {
+	widget.Label
+	UUID uuid.UUID
+}
+
+type queueEntryData struct {
+	Title    string
+	Duration uint
+	QueuedBy string
+	UUID     uuid.UUID
+}
+
+var queueDataArray []queueEntryData
+
+func fetchQueueData() {
+	return
+}
+
+func newQueueEntry() *queueEntryWidget {
+	qe := &queueEntryWidget{}
+	qe.ExtendBaseWidget(qe)
+	return qe
+}
+
+func (qe *queueEntryWidget) TappedSecondary(pe *fyne.PointEvent) {
+	menu := fyne.NewMenu(
+		"Right Menu",
+		fyne.NewMenuItem("Remove from queue", func() {
+			for i := range len(queueDataArray) {
+				if qe.UUID == queueDataArray[i].UUID {
+					queueDataArray = append(queueDataArray[:i], queueDataArray[i+1:]...)
+
+					fetchQueueData()
+
+					break
+				}
+			}
+		}),
+	)
+
+	entryPos := fyne.CurrentApp().Driver().AbsolutePositionForObject(qe)
+	popUpPos := entryPos.Add(pe.Position)
+	c := fyne.CurrentApp().Driver().CanvasForObject(qe)
+	widget.ShowPopUpMenuAtPosition(menu, c, popUpPos)
+}
 
 func mediaBarConstructor() *fyne.Container {
 	// Initialize bottomMediaInfoContainer
@@ -99,18 +146,37 @@ func queueBarConstructor() *fyne.Container {
 
 	playerControlsBar := widget.NewToolbar()
 
-	queueBar := container.NewBorder(nil, nil, nil, nil)
+	queueList := widget.NewList(
+		func() int {
+			return len(queueDataArray)
+		},
+		func() fyne.CanvasObject {
+
+			entry := newQueueEntry()
+
+			return entry
+		},
+		func(lii widget.ListItemID, co fyne.CanvasObject) {
+			co.(*queueEntryWidget).UUID = queueDataArray[lii].UUID
+			co.(*queueEntryWidget).SetText(queueDataArray[lii].Title)
+		})
+
+	queueBar := container.NewBorder(nil, playerControlsBar, nil, nil, queueList)
+
+	return queueBar
 }
 
 func contentConstructor(w fyne.Window) *fyne.Container {
+	queueDataArray = []queueEntryData{}
 	mediaBar := mediaBarConstructor()
 	headerBar := headerBarConstructor(w)
+	queueBar := queueBarConstructor()
 
 	content := container.NewBorder(
 		headerBar,
 		mediaBar,
 		nil,
-		nil,
+		queueBar,
 	)
 
 	return content
