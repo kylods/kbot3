@@ -10,8 +10,9 @@ import (
 	"os"
 	"time"
 
+	"github.com/gorilla/websocket"
 	"github.com/kylods/kbot3/internal/discordclient"
-	"github.com/kylods/kbot3/internal/middleware"
+	"github.com/kylods/kbot3/pkg/models"
 
 	"gorm.io/gorm"
 )
@@ -21,7 +22,10 @@ type Server struct {
 	discordClient *discordclient.Client
 	db            *gorm.DB
 	httpServer    *http.Server
+	queueMap      map[string]models.Queue
 }
+
+var upgrader = websocket.Upgrader{}
 
 func uploadFile(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Upload hit!")
@@ -61,29 +65,38 @@ func uploadFile(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, 202, map[string]string{"message": "Upload Successful"})
 }
 
+func (s *Server) wsHandler(w http.ResponseWriter, r *http.Request) {
+	guildID := r.PathValue("id")
+
+	var gConfig models.Guild
+
+	s.db.Where(&models.Guild{GuildID: guildID}).First(&gConfig)
+}
+
 // Initializes a new APi server
 func NewServer(port string, discordClient *discordclient.Client, db *gorm.DB) *Server {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("GET /ping", pingHandler)
-	mux.HandleFunc("GET /auth", authenticateHandler)
-	mux.HandleFunc("POST /upload", uploadFile)
-
 	server := http.Server{
 		Addr:         ":" + port,
-		Handler:      middleware.Logging(mux),
+		Handler:      loggingMiddleware(mux),
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  60 * time.Second,
 	}
 
-	output := Server{
+	output := &Server{
 		discordClient: discordClient,
 		db:            db,
 		httpServer:    &server,
 	}
 
-	return &output
+	mux.HandleFunc("GET /ping", pingHandler)
+	mux.HandleFunc("GET /auth", authenticateHandler)
+	mux.HandleFunc("POST /upload", uploadFile)
+	mux.HandleFunc("GET /ws/{id}", output.wsHandler)
+
+	return output
 }
 func (s *Server) Start() {
 	log.Printf("API server is running on port %s", s.httpServer.Addr)
