@@ -9,9 +9,11 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/kylods/kbot3/internal/queue"
 	"github.com/kylods/kbot3/pkg/models"
 	"github.com/matthew-balzan/dca"
 	"gorm.io/gorm"
@@ -72,6 +74,8 @@ type Client struct {
 	version  string
 	commands []Command
 	ready    bool
+	queueMap map[string]*models.Queue
+	queueMu  sync.RWMutex
 }
 
 func NewDiscordClient(token string, version string, db *gorm.DB) *Client {
@@ -131,7 +135,13 @@ func (c *Client) createGuildHandler(s *discordgo.Session, g *discordgo.GuildCrea
 
 	c.db.Where(&models.Guild{GuildID: g.ID}).Attrs(configTemplate).FirstOrCreate(&gConfig)
 
+	queuePointer := queue.InitializeQueue()
+	c.queueMu.Lock()
+	defer c.queueMu.Unlock()
+	c.queueMap[g.ID] = queuePointer
+
 	log.Printf("Initialized Guild %v", gConfig.Name)
+
 }
 
 func (c *Client) readyHandler(s *discordgo.Session, r *discordgo.Ready) {

@@ -22,7 +22,6 @@ type Server struct {
 	discordClient *discordclient.Client
 	db            *gorm.DB
 	httpServer    *http.Server
-	queueMap      map[string]models.Queue
 }
 
 var upgrader = websocket.Upgrader{}

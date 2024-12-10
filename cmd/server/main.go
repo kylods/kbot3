@@ -24,6 +24,8 @@ func main() {
 
 	log.Printf("Starting KBot Server %s\n", version)
 
+	// Queue
+
 	// Database
 	db, err := database.Connect(os.Getenv("DB_CONNECTION_STRING"))
 	if err != nil {
