@@ -1,6 +1,7 @@
 package discordclient
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"math/rand/v2"
@@ -301,6 +302,7 @@ func commandDebug2Handler(s *discordgo.Session, m *discordgo.MessageCreate, c *C
 		select {
 		case vc.OpusSend <- frame:
 		case <-time.After(time.Second): // No frame sent in a second, assume stream is kaput.
+			fmt.Println("Stream end.")
 			return
 		}
 	}
