@@ -14,6 +14,7 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/kylods/kbot3/internal/queue"
+	"github.com/kylods/kbot3/internal/websocket"
 	"github.com/kylods/kbot3/pkg/models"
 	"github.com/matthew-balzan/dca"
 	"gorm.io/gorm"
@@ -22,7 +23,7 @@ import (
 type Command struct {
 	Name        string
 	Description string
-	Handler     func(s *discordgo.Session, m *discordgo.MessageCreate, c *Client, gConfig *models.Guild)
+	Handler     func(s *discordgo.Session, m *discordgo.MessageCreate, c *DiscordClient, gConfig *models.Guild)
 }
 
 var commands = []Command{
@@ -68,32 +69,36 @@ var commands = []Command{
 	},
 }
 
-type Client struct {
-	session  *discordgo.Session
-	db       *gorm.DB
-	version  string
-	commands []Command
-	ready    bool
-	queueMap map[string]*models.Queue
-	queueMu  sync.RWMutex
+type DiscordClient struct {
+	session      *discordgo.Session
+	db           *gorm.DB
+	version      string
+	commands     []Command
+	ready        bool
+	queueMap     map[string]*models.Queue
+	queueMu      sync.RWMutex
+	websocketHub websocket.Hub
 }
 
-func NewDiscordClient(token string, version string, db *gorm.DB) *Client {
+func NewDiscordClient(token string, version string, db *gorm.DB) *DiscordClient {
 	session, err := discordgo.New("Bot " + token)
 	if err != nil {
 		log.Fatal("Could not initialize Discord session")
 	}
 
-	return &Client{
-		session:  session,
-		version:  version,
-		db:       db,
-		commands: commands,
-		ready:    false,
+	return &DiscordClient{
+		session:      session,
+		version:      version,
+		db:           db,
+		commands:     commands,
+		ready:        false,
+		queueMap:     make(map[string]*models.Queue),
+		queueMu:      sync.RWMutex{},
+		websocketHub: websocket.Hub{},
 	}
 }
 
-func (c *Client) Run() {
+func (c *DiscordClient) Run() {
 	// Add event handlers
 	c.session.AddHandler(c.messageCreate)
 	c.session.AddHandler(c.readyHandler)
@@ -107,12 +112,12 @@ func (c *Client) Run() {
 	log.Println("Discord client is running")
 }
 
-func (c *Client) Close() {
+func (c *DiscordClient) Close() {
 	log.Println("Closing Discord client...")
 	c.session.Close()
 }
 
-func (c *Client) createGuildHandler(s *discordgo.Session, g *discordgo.GuildCreate) {
+func (c *DiscordClient) createGuildHandler(s *discordgo.Session, g *discordgo.GuildCreate) {
 	/*This event can be sent in three different scenarios:
 
 	    When a user is initially connecting, to lazily load and backfill information for all unavailable guilds
@@ -144,12 +149,12 @@ func (c *Client) createGuildHandler(s *discordgo.Session, g *discordgo.GuildCrea
 
 }
 
-func (c *Client) readyHandler(s *discordgo.Session, r *discordgo.Ready) {
+func (c *DiscordClient) readyHandler(s *discordgo.Session, r *discordgo.Ready) {
 	log.Printf("Logged into Discord as %s", r.User.String())
 	c.ready = true
 }
 
-func (c *Client) messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
+func (c *DiscordClient) messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	if !c.ready {
 		log.Println("Incoming message ignored, still initializing...")
 		return
@@ -205,7 +210,7 @@ func easterEggDM(s *discordgo.Session, m *discordgo.MessageCreate) {
 	s.ChannelMessageSend(m.ChannelID, msg)
 }
 
-func commandHelpHandler(s *discordgo.Session, m *discordgo.MessageCreate, c *Client, gConfig *models.Guild) {
+func commandHelpHandler(s *discordgo.Session, m *discordgo.MessageCreate, c *DiscordClient, gConfig *models.Guild) {
 	reply := "**KBot Commands**"
 	for _, cmd := range c.commands {
 		reply += "\n`" + cmd.Name + "`: " + cmd.Description
@@ -213,7 +218,7 @@ func commandHelpHandler(s *discordgo.Session, m *discordgo.MessageCreate, c *Cli
 	s.ChannelMessageSend(m.ChannelID, reply)
 }
 
-func commandAboutHandler(s *discordgo.Session, m *discordgo.MessageCreate, c *Client, gConfig *models.Guild) {
+func commandAboutHandler(s *discordgo.Session, m *discordgo.MessageCreate, c *DiscordClient, gConfig *models.Guild) {
 	reply := "# KBot " + c.version + `
 	A Discord extension for KBot Media Player, written by Kuelos
 
@@ -227,7 +232,7 @@ func commandAboutHandler(s *discordgo.Session, m *discordgo.MessageCreate, c *Cl
 	s.ChannelMessageSend(m.ChannelID, reply)
 }
 
-func commandSetprefixHandler(s *discordgo.Session, m *discordgo.MessageCreate, c *Client, gConfig *models.Guild) {
+func commandSetprefixHandler(s *discordgo.Session, m *discordgo.MessageCreate, c *DiscordClient, gConfig *models.Guild) {
 	stringSlice := strings.Split(m.Content, " ")
 	if len(stringSlice) < 2 {
 		s.ChannelMessageSend(m.ChannelID, "No prefix given")
@@ -244,11 +249,11 @@ func commandSetprefixHandler(s *discordgo.Session, m *discordgo.MessageCreate, c
 	s.ChannelMessageSend(m.ChannelID, "Updated command prefix of "+gConfig.Name+" to `"+string(gConfig.CommandPrefix)+"`")
 }
 
-func commandDownloadHandler(s *discordgo.Session, m *discordgo.MessageCreate, c *Client, gConfig *models.Guild) {
+func commandDownloadHandler(s *discordgo.Session, m *discordgo.MessageCreate, c *DiscordClient, gConfig *models.Guild) {
 	s.ChannelMessageSend(m.ChannelID, "You can find a download to KBot Media Player at <https://nextcloud.kuelos.net/s/PdGpdc5Apd2DcGL>")
 }
 
-func commandSummonHandler(s *discordgo.Session, m *discordgo.MessageCreate, c *Client, gConfig *models.Guild) {
+func commandSummonHandler(s *discordgo.Session, m *discordgo.MessageCreate, c *DiscordClient, gConfig *models.Guild) {
 	invokersVoiceChannel, err := s.State.VoiceState(m.GuildID, m.Author.ID)
 	if err != nil {
 		s.ChannelMessageSend(m.ChannelID, "Couldn't find your voice channel: "+err.Error())
@@ -261,7 +266,7 @@ func commandSummonHandler(s *discordgo.Session, m *discordgo.MessageCreate, c *C
 	s.ChannelVoiceJoin(m.GuildID, invokersVoiceChannel.ChannelID, false, true)
 }
 
-func commandDebug1Handler(s *discordgo.Session, m *discordgo.MessageCreate, c *Client, gConfig *models.Guild) {
+func commandDebug1Handler(s *discordgo.Session, m *discordgo.MessageCreate, c *DiscordClient, gConfig *models.Guild) {
 	encodeSession, err := dca.EncodeFile("./yule.mp3", dca.StdEncodeOptions)
 	if err != nil {
 		s.ChannelMessageSend(m.ChannelID, "Couldn't convert file: "+err.Error())
@@ -283,7 +288,7 @@ func commandDebug1Handler(s *discordgo.Session, m *discordgo.MessageCreate, c *C
 	}
 }
 
-func commandDebug2Handler(s *discordgo.Session, m *discordgo.MessageCreate, c *Client, gConfig *models.Guild) {
+func commandDebug2Handler(s *discordgo.Session, m *discordgo.MessageCreate, c *DiscordClient, gConfig *models.Guild) {
 	// First check for voice connection
 	vc := s.VoiceConnections[m.GuildID]
 	if vc == nil {
@@ -318,6 +323,6 @@ func commandDebug2Handler(s *discordgo.Session, m *discordgo.MessageCreate, c *C
 	}
 }
 
-func commandDebug3Handler(s *discordgo.Session, m *discordgo.MessageCreate, c *Client, gConfig *models.Guild) {
+func commandDebug3Handler(s *discordgo.Session, m *discordgo.MessageCreate, c *DiscordClient, gConfig *models.Guild) {
 	s.ChannelMessageSend(m.ChannelID, "need to build this still :)")
 }

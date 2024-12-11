@@ -19,7 +19,7 @@ import (
 
 // Server represents the HTTP server
 type Server struct {
-	discordClient *discordclient.Client
+	discordClient *discordclient.DiscordClient
 	db            *gorm.DB
 	httpServer    *http.Server
 }
@@ -64,7 +64,7 @@ func uploadFile(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, 202, map[string]string{"message": "Upload Successful"})
 }
 
-func (s *Server) wsHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Server) wsDiscordHandler(w http.ResponseWriter, r *http.Request) {
 	guildID := r.PathValue("id")
 
 	var gConfig models.Guild
@@ -73,7 +73,7 @@ func (s *Server) wsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // Initializes a new APi server
-func NewServer(port string, discordClient *discordclient.Client, db *gorm.DB) *Server {
+func NewServer(port string, discordClient *discordclient.DiscordClient, db *gorm.DB) *Server {
 	mux := http.NewServeMux()
 
 	server := http.Server{
@@ -93,7 +93,7 @@ func NewServer(port string, discordClient *discordclient.Client, db *gorm.DB) *S
 	mux.HandleFunc("GET /ping", pingHandler)
 	mux.HandleFunc("GET /auth", authenticateHandler)
 	mux.HandleFunc("POST /upload", uploadFile)
-	mux.HandleFunc("GET /ws/{id}", output.wsHandler)
+	mux.HandleFunc("GET /ws/discord/{id}", output.wsDiscordHandler)
 
 	return output
 }
