@@ -10,7 +10,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/gorilla/websocket"
 	"github.com/kylods/kbot3/internal/discordclient"
 	"github.com/kylods/kbot3/pkg/models"
 
@@ -23,8 +22,6 @@ type Server struct {
 	db            *gorm.DB
 	httpServer    *http.Server
 }
-
-var upgrader = websocket.Upgrader{}
 
 func uploadFile(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Upload hit!")

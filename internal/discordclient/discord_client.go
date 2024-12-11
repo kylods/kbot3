@@ -70,14 +70,29 @@ var commands = []Command{
 }
 
 type DiscordClient struct {
-	session      *discordgo.Session
-	db           *gorm.DB
-	version      string
-	commands     []Command
-	ready        bool
-	queueMap     map[string]*models.Queue
-	queueMu      sync.RWMutex
-	websocketHub websocket.Hub
+	session     *discordgo.Session
+	db          *gorm.DB
+	version     string
+	commands    []Command
+	ready       bool
+	playerMap   map[string]*mediaPlayer
+	playerMapMu sync.RWMutex
+}
+
+type mediaPlayer struct {
+	hub     websocket.Hub
+	queueMu sync.RWMutex
+	queue   models.Queue
+}
+
+func NewMediaPlayer() *mediaPlayer {
+	mpPointer := &mediaPlayer{
+		hub:     *websocket.NewHub(),
+		queueMu: sync.RWMutex{},
+		queue:   *queue.InitializeQueue(),
+	}
+
+	return mpPointer
 }
 
 func NewDiscordClient(token string, version string, db *gorm.DB) *DiscordClient {
@@ -87,14 +102,13 @@ func NewDiscordClient(token string, version string, db *gorm.DB) *DiscordClient 
 	}
 
 	return &DiscordClient{
-		session:      session,
-		version:      version,
-		db:           db,
-		commands:     commands,
-		ready:        false,
-		queueMap:     make(map[string]*models.Queue),
-		queueMu:      sync.RWMutex{},
-		websocketHub: websocket.Hub{},
+		session:     session,
+		version:     version,
+		db:          db,
+		commands:    commands,
+		ready:       false,
+		playerMap:   make(map[string]*mediaPlayer),
+		playerMapMu: sync.RWMutex{},
 	}
 }
 
@@ -140,10 +154,10 @@ func (c *DiscordClient) createGuildHandler(s *discordgo.Session, g *discordgo.Gu
 
 	c.db.Where(&models.Guild{GuildID: g.ID}).Attrs(configTemplate).FirstOrCreate(&gConfig)
 
-	queuePointer := queue.InitializeQueue()
-	c.queueMu.Lock()
-	defer c.queueMu.Unlock()
-	c.queueMap[g.ID] = queuePointer
+	playerPointer := NewMediaPlayer()
+	c.playerMapMu.Lock()
+	defer c.playerMapMu.Unlock()
+	c.playerMap[g.ID] = playerPointer
 
 	log.Printf("Initialized Guild %v", gConfig.Name)
 
