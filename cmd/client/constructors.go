@@ -2,11 +2,9 @@ package main
 
 import (
 	"fmt"
-	"image/color"
 	"time"
 
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
@@ -53,24 +51,13 @@ func mediaBarConstructor() *fyne.Container {
 	return bottomMediaInfoContainer
 }
 
-func headerBarConstructor(w fyne.Window) *fyne.Container {
+func headerBarConstructor(w fyne.Window, as *appState) *fyne.Container {
 	// initialize topbar
-	serverSelectionDropdown := widget.NewSelect([]string{"Midnight Cookout", "KBot Testing Grounds", "The Groovers"}, func(s string) {
-		prop := canvas.NewRectangle(color.Transparent)
-		prop.SetMinSize(fyne.NewSize(50, 50))
-
-		a3 := widget.NewActivity()
-		d := dialog.NewCustomWithoutButtons("Requesting Server Data...", container.NewStack(prop, a3), w)
-		a3.Start()
-		d.Show()
-
-		go func() {
-			time.Sleep(time.Second * 3)
-			a3.Stop()
-			d.Hide()
-		}()
+	serverSelectionDropdown := widget.NewSelect([]string{}, func(s string) {
 
 	})
+
+	as.serverSelectDropdown = serverSelectionDropdown
 
 	fileDialog := dialog.NewFileOpen(func(reader fyne.URIReadCloser, err error) {
 		if err != nil {
@@ -101,7 +88,7 @@ func headerBarConstructor(w fyne.Window) *fyne.Container {
 		func(b bool) {
 			if b { // Runs when pressing 'Connect'
 				serverURL = connectEntry.Text
-				fmt.Println(serverURL)
+				connectToServer(as)
 			} else { // Runs when dismissed
 				return
 			}
@@ -144,10 +131,10 @@ func queueBarConstructor() *fyne.Container {
 	return queueBar
 }
 
-func contentConstructor(w fyne.Window) *fyne.Container {
+func contentConstructor(w fyne.Window, as *appState) *fyne.Container {
 	queueDataArray = []queueEntryData{}
 	mediaBar := mediaBarConstructor()
-	headerBar := headerBarConstructor(w)
+	headerBar := headerBarConstructor(w, as)
 	queueBar := queueBarConstructor()
 
 	content := container.NewBorder(

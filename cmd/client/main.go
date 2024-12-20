@@ -3,15 +3,47 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"image/color"
 	"io"
 	"mime/multipart"
 	"net/http"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
+	"fyne.io/fyne/v2/canvas"
+	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
 	"github.com/google/uuid"
 )
+
+type appState struct {
+	serverMap             map[string]string
+	serverSelectDropdown  *widget.Select
+	networkStatusLabel    *widget.Label
+	networkStatusActivity *widget.Activity
+	networkStatusDialog   *dialog.CustomDialog
+}
+
+func (s *appState) updateServerSelectOptions() {
+	newOptions := []string{}
+	for _, name := range s.serverMap {
+		newOptions = append(newOptions, name)
+	}
+
+	s.serverSelectDropdown.Options = newOptions
+	s.serverSelectDropdown.Refresh()
+}
+
+func (s *appState) startNetworkStatusOverlay() {
+	s.networkStatusActivity.Start()
+	s.networkStatusDialog.Show()
+}
+
+func (s *appState) stopNetworkStatusOverlay() {
+	s.networkStatusActivity.Stop()
+	s.networkStatusDialog.Hide()
+}
 
 const version string = "INDEV"
 
@@ -114,10 +146,22 @@ func uploadFileLogic(reader fyne.URIReadCloser) error {
 }
 
 func main() {
+
 	a := app.New()
 	w := a.NewWindow("KBot Media Player " + version)
 
-	content := contentConstructor(w)
+	clientAppState := &appState{}
+
+	content := contentConstructor(w, clientAppState)
+
+	prop := canvas.NewRectangle(color.Transparent)
+	prop.SetMinSize(fyne.NewSize(50, 50))
+
+	networkActivityWidget := widget.NewActivity()
+	networkActivityDialog := dialog.NewCustomWithoutButtons("Requesting Server Data...", container.NewStack(prop, networkActivityWidget), w)
+
+	clientAppState.networkStatusActivity = networkActivityWidget
+	clientAppState.networkStatusDialog = networkActivityDialog
 
 	w.SetContent(content)
 	w.Resize(fyne.Size{Width: 1024, Height: 768})
