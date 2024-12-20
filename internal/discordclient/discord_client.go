@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/google/uuid"
 	"github.com/kylods/kbot3/internal/queue"
 	"github.com/kylods/kbot3/internal/websocket"
 	"github.com/kylods/kbot3/pkg/models"
@@ -80,16 +81,14 @@ type DiscordClient struct {
 }
 
 type mediaPlayer struct {
-	hub     websocket.Hub
-	queueMu sync.RWMutex
-	queue   models.Queue
+	hub   websocket.Hub
+	queue models.Queue
 }
 
 func NewMediaPlayer() *mediaPlayer {
 	mpPointer := &mediaPlayer{
-		hub:     *websocket.NewHub(),
-		queueMu: sync.RWMutex{},
-		queue:   *queue.InitializeQueue(),
+		hub:   *websocket.NewHub(),
+		queue: *queue.InitializeQueue(),
 	}
 
 	return mpPointer
@@ -338,5 +337,29 @@ func commandDebug2Handler(s *discordgo.Session, m *discordgo.MessageCreate, c *D
 }
 
 func commandDebug3Handler(s *discordgo.Session, m *discordgo.MessageCreate, c *DiscordClient, gConfig *models.Guild) {
-	s.ChannelMessageSend(m.ChannelID, "need to build this still :)")
+	randInt := rand.Int()
+
+	uuid, err := uuid.NewUUID()
+	if err != nil {
+		log.Printf("Error creating UUID: %v", err)
+		return
+	}
+	queueObject := models.QueueObject{
+		QueueUUID: uuid.String(),
+		FileUUID:  "N/A",
+		Title:     strconv.Itoa(randInt),
+		Artist:    "Kuelos :D",
+		Duration:  60,
+		QueuedBy:  "KBot3 Command",
+	}
+
+	c.playerMapMu.RLock()
+	mp := c.playerMap[m.GuildID]
+	c.playerMapMu.RUnlock()
+
+	mp.queue.Mutex.Lock()
+	mp.queue.Tracks = append(mp.queue.Tracks, queueObject)
+	mp.queue.Mutex.Unlock()
+
+	s.ChannelMessageSend(m.ChannelID, "Item added to queue: "+strconv.Itoa(randInt))
 }

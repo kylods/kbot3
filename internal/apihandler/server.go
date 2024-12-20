@@ -2,7 +2,6 @@ package apihandler
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -11,7 +10,6 @@ import (
 	"time"
 
 	"github.com/kylods/kbot3/internal/discordclient"
-	"github.com/kylods/kbot3/pkg/models"
 
 	"gorm.io/gorm"
 )
@@ -61,14 +59,6 @@ func uploadFile(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, 202, map[string]string{"message": "Upload Successful"})
 }
 
-func (s *Server) wsDiscordHandler(w http.ResponseWriter, r *http.Request) {
-	guildID := r.PathValue("id")
-
-	var gConfig models.Guild
-
-	s.db.Where(&models.Guild{GuildID: guildID}).First(&gConfig)
-}
-
 // Initializes a new APi server
 func NewServer(port string, discordClient *discordclient.DiscordClient, db *gorm.DB) *Server {
 	mux := http.NewServeMux()
@@ -89,6 +79,7 @@ func NewServer(port string, discordClient *discordclient.DiscordClient, db *gorm
 
 	mux.HandleFunc("GET /ping", pingHandler)
 	mux.HandleFunc("GET /auth", authenticateHandler)
+	mux.HandleFunc("GET /discord/guilds", getDiscordGuildsHandler)
 	mux.HandleFunc("POST /upload", uploadFile)
 	mux.HandleFunc("GET /ws/discord/{id}", output.wsDiscordHandler)
 
@@ -104,20 +95,4 @@ func (s *Server) Start() {
 func (s *Server) Shutdown(ctx context.Context) error {
 	log.Println("Shutting down API server...")
 	return s.httpServer.Shutdown(ctx)
-}
-
-func pingHandler(w http.ResponseWriter, r *http.Request) {
-	respondJSON(w, http.StatusOK, map[string]string{"message": "Pong!"})
-}
-
-func respondJSON(w http.ResponseWriter, statusCode int, data interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
-	if err := json.NewEncoder(w).Encode(data); err != nil {
-		log.Printf("Failed to write JSON response: %v", err)
-	}
-}
-
-func authenticateHandler(w http.ResponseWriter, r *http.Request) {
-	respondJSON(w, http.StatusOK, "To Be Implemented")
 }
