@@ -171,6 +171,7 @@ func (c *DiscordClient) createGuildHandler(s *discordgo.Session, g *discordgo.Gu
 	c.db.Where(&models.Guild{GuildID: g.ID}).Attrs(configTemplate).FirstOrCreate(&gConfig)
 
 	playerPointer := NewMediaPlayer()
+	playerPointer.guildName = g.Name
 	c.playerMapMu.Lock()
 	defer c.playerMapMu.Unlock()
 	c.playerMap[g.ID] = playerPointer
