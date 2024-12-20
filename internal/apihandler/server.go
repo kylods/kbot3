@@ -79,7 +79,7 @@ func NewServer(port string, discordClient *discordclient.DiscordClient, db *gorm
 
 	mux.HandleFunc("GET /ping", pingHandler)
 	mux.HandleFunc("GET /auth", authenticateHandler)
-	mux.HandleFunc("GET /discord/guilds", getDiscordGuildsHandler)
+	mux.HandleFunc("GET /discord/guilds", output.getDiscordGuildsHandler)
 	mux.HandleFunc("POST /upload", uploadFile)
 	mux.HandleFunc("GET /ws/discord/{id}", output.wsDiscordHandler)
 

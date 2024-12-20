@@ -80,9 +80,26 @@ type DiscordClient struct {
 	playerMapMu sync.RWMutex
 }
 
+func (dc *DiscordClient) GetGuilds() map[string]string {
+	guildMap := make(map[string]string)
+	if !dc.ready {
+		return guildMap
+	}
+
+	dc.playerMapMu.RLock()
+	defer dc.playerMapMu.RUnlock()
+
+	for guildID, player := range dc.playerMap {
+		guildMap[guildID] = player.guildName
+	}
+
+	return guildMap
+}
+
 type mediaPlayer struct {
-	hub   websocket.Hub
-	queue models.Queue
+	hub       websocket.Hub
+	queue     models.Queue
+	guildName string
 }
 
 func NewMediaPlayer() *mediaPlayer {
